@@ -1,118 +1,41 @@
 # Playwright MCP Server in Docker
 
-A Model Context Protocol (MCP) server running Playwright in a Docker container. This server provides a simple HTTP API that uses Playwright to capture screenshots of web pages.
+A Model Context Protocol (MCP) server running Playwright in a Docker container. This server provides browser automation capabilities through the MCP protocol, enabling LLMs to interact with web pages.
 
-## � Quick Commands
+## 🚀 What is MCP?
 
-| Action | Command |
-|--------|---------|
-| **Build Image** | `docker build -t playwright-mcp .` |
-| **Run Container** | `docker run -d -p 8080:8080 --name playwright-mcp-server playwright-mcp` |
-| **Check Status** | `docker ps` |
-| **View Logs** | `docker logs playwright-mcp-server` |
-| **Test Server** | `curl http://localhost:8080/ --output test.png` |
-| **Run Tests** | `node test.js` |
-| **Stop Container** | `docker stop playwright-mcp-server` |
-| **Remove Container** | `docker rm playwright-mcp-server` |
+The [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open protocol that standardizes how applications provide context to LLMs. This implementation provides a Playwright-based MCP server that can be run in Docker containers on any Linux system.
 
-## �📋 Prerequisites
+## ✨ Features
+
+- **Full Playwright MCP Support**: All browser automation tools from [@playwright/mcp](https://github.com/microsoft/playwright-mcp)
+- **Docker Ready**: Pre-built Docker image for easy deployment
+- **HTTP/SSE Transport**: Accessible via HTTP with Server-Sent Events
+- **Port 8080**: Standard port for easy integration
+- **Azure Compatible**: Ready for Azure Container Instances, Azure App Service, and GitHub Packages
+
+## 📋 Prerequisites
 
 - Docker installed and running
-- Node.js (v14 or higher) for running tests
-- Git (for cloning the repository)
+- Port 8080 available
 
-### Installing Docker
+## 🔧 Quick Start
 
-If you don't have Docker installed:
-
-**macOS:**
-```bash
-# Using Homebrew
-brew install --cask docker
-
-# Or download Docker Desktop from:
-# https://www.docker.com/products/docker-desktop
-```
-
-**Linux (Ubuntu/Debian):**
-```bash
-# Update package index
-sudo apt-get update
-
-# Install Docker
-sudo apt-get install -y docker.io
-
-# Start Docker service
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# Add your user to docker group (to run without sudo)
-sudo usermod -aG docker $USER
-
-# Log out and back in for changes to take effect
-```
-
-**Linux (Fedora/RHEL/CentOS):**
-```bash
-sudo dnf install -y docker
-sudo systemctl start docker
-sudo systemctl enable docker
-sudo usermod -aG docker $USER
-```
-
-**Windows:**
-```bash
-# Download and install Docker Desktop from:
-# https://www.docker.com/products/docker-desktop
-```
-
-**Verify Docker Installation:**
-```bash
-# Check Docker version
-docker --version
-
-# Test Docker is working
-docker run hello-world
-
-# Check Docker is running
-docker ps
-```
-
-## 🚀 Quick Start
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/harshityadav95/playwright-mcp-in-Azure-.git
-cd playwright-mcp-in-Azure-
-```
-
-### 2. Build the Docker Image
+### 1. Build the Docker Image
 
 ```bash
 docker build -t playwright-mcp .
 ```
 
-This will:
-- Pull the official Playwright Docker base image (v1.56.1)
-- Install Node.js dependencies
-- Set up the application on port 8080
-
-### 3. Run the Container
+### 2. Run the Container
 
 ```bash
 docker run -d -p 8080:8080 --name playwright-mcp-server playwright-mcp
 ```
 
-Options explained:
-- `-d`: Run in detached mode (background)
-- `-p 8080:8080`: Map port 8080 from container to host
-- `--name playwright-mcp-server`: Give the container a friendly name
-- `playwright-mcp`: The image name we built
+### 3. Verify the Server
 
-### 4. Verify the Server is Running
-
-Check the container logs:
+Check that the server is running:
 
 ```bash
 docker logs playwright-mcp-server
@@ -120,471 +43,276 @@ docker logs playwright-mcp-server
 
 You should see:
 ```
-Server listening on port 8080
+🎭 Playwright MCP Server started
+📡 Listening on http://0.0.0.0:8080
+🔧 Available endpoints:
+   - GET  /health       - Health check
+   - GET  /capabilities - List MCP capabilities
+   - POST /mcp          - MCP protocol endpoint (SSE)
+
+✨ Server ready to accept connections!
 ```
 
-## ✅ Testing & Validation
+## 📡 API Endpoints
 
-### Option 1: Automated Test Suite (Recommended)
+### Health Check
+```bash
+curl http://localhost:8080/health
+```
 
-Run the comprehensive test script that validates all functionality:
+Response:
+```json
+{
+  "status": "ok",
+  "service": "Playwright MCP Server",
+  "version": "1.0.0",
+  "port": "8080",
+  "endpoints": {
+    "mcp": "/mcp",
+    "health": "/health",
+    "capabilities": "/capabilities"
+  }
+}
+```
+
+### List MCP Server Capabilities
+
+**Get all available Playwright tools:**
 
 ```bash
-node test.js
+curl http://localhost:8080/capabilities
 ```
 
-This automated test suite will:
-- ✓ Verify Docker image exists
-- ✓ Start a test container
-- ✓ Check container health
-- ✓ Validate server logs
-- ✓ Test Playwright screenshot functionality
-- ✓ Verify API responses
-- ✓ Test error handling (404 responses)
-- ✓ Clean up automatically
-
-Expected output:
+Response (excerpt):
+```json
+{
+  "tools": [
+    {
+      "name": "browser_navigate",
+      "description": "Navigate to a URL"
+    },
+    {
+      "name": "browser_snapshot",
+      "description": "Capture accessibility snapshot of the current page"
+    },
+    {
+      "name": "browser_click",
+      "description": "Perform click on a web page"
+    },
+    {
+      "name": "browser_type",
+      "description": "Type text into editable element"
+    },
+    {
+      "name": "browser_fill_form",
+      "description": "Fill multiple form fields"
+    },
+    {
+      "name": "browser_take_screenshot",
+      "description": "Take a screenshot of the current page"
+    }
+  ],
+  "protocol": "MCP",
+  "transport": "SSE"
+}
 ```
-============================================================
-  Playwright MCP Docker Container Test Suite
-============================================================
 
-Total Tests: 6
-Passed: 6
-Failed: 0
+### MCP Protocol Endpoint
 
-✓ All tests passed!
-```
-
-### Option 2: Manual Testing
-
-#### Test with cURL
+The main MCP endpoint is at `/mcp` and uses Server-Sent Events (SSE) transport:
 
 ```bash
-# Request a screenshot (returns PNG image)
-curl http://localhost:8080/ --output screenshot.png
-
-# Check HTTP headers
-curl -I http://localhost:8080/
-
-# Test 404 response
-curl http://localhost:8080/nonexistent
+# Connect MCP client to the server
+POST http://localhost:8080/mcp
 ```
 
-Expected response headers:
+## 🔌 Available MCP Tools
+
+The server provides all standard Playwright MCP tools:
+
+**Navigation & Pages:**
+- `browser_navigate` - Navigate to a URL
+- `browser_navigate_back` - Go back to the previous page
+- `browser_close` - Close the browser page
+
+**Interaction:**
+- `browser_click` - Click on elements
+- `browser_type` - Type text into fields
+- `browser_fill_form` - Fill multiple form fields
+- `browser_hover` - Hover over elements
+- `browser_drag` - Drag and drop
+- `browser_press_key` - Press keyboard keys
+- `browser_select_option` - Select dropdown options
+
+**Information:**
+- `browser_snapshot` - Get accessibility snapshot
+- `browser_take_screenshot` - Capture screenshots
+- `browser_console_messages` - Get console logs
+- `browser_network_requests` - Get network requests
+
+**Dialogs & Files:**
+- `browser_handle_dialog` - Handle alerts/prompts
+- `browser_file_upload` - Upload files
+
+**Advanced:**
+- `browser_evaluate` - Execute JavaScript
+- `browser_resize` - Resize browser window
+- `browser_wait_for` - Wait for conditions
+
+For complete tool documentation, see the [official Playwright MCP documentation](https://github.com/microsoft/playwright-mcp).
+
+## 🐳 Docker Commands
+
+| Action | Command |
+|--------|---------|
+| **Build Image** | `docker build -t playwright-mcp .` |
+| **Run Container** | `docker run -d -p 8080:8080 --name playwright-mcp-server playwright-mcp` |
+| **Check Status** | `docker ps` |
+| **View Logs** | `docker logs playwright-mcp-server` |
+| **Stop Container** | `docker stop playwright-mcp-server` |
+| **Remove Container** | `docker rm playwright-mcp-server` |
+| **Health Check** | `curl http://localhost:8080/health` |
+| **List Capabilities** | `curl http://localhost:8080/capabilities` |
+
+## 🌐 Using with MCP Clients
+
+### VS Code / Cursor
+
+Add to your MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
 ```
-HTTP/1.1 200 OK
-Content-Type: image/png
+
+### Claude Desktop
+
+Add to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
 ```
 
-#### Test with a Web Browser
+### Any MCP Client
 
-Open your browser and navigate to:
+The server is accessible at:
 ```
-http://localhost:8080/
-```
-
-You should see a PNG screenshot of http://whatsmyuseragent.org/
-
-#### Test with Node.js Script
-
-```javascript
-const fetch = require('node-fetch');
-const fs = require('fs');
-
-(async () => {
-  const response = await fetch('http://localhost:8080/');
-  const buffer = await response.buffer();
-  fs.writeFileSync('test-output.png', buffer);
-  console.log('Screenshot saved!');
-})();
+http://localhost:8080/mcp
 ```
 
-## 🔍 Validation Checklist
+## 📦 GitHub Packages
 
-Use this checklist to ensure everything is working correctly:
+To use the image from GitHub Container Registry:
 
-- [ ] Docker image builds successfully
-- [ ] Container starts without errors
-- [ ] Server logs show "Server listening on port 8080"
-- [ ] Container status shows "Up" when running `docker ps`
-- [ ] HTTP request to `http://localhost:8080/` returns status 200
-- [ ] Response Content-Type is `image/png`
-- [ ] Screenshot file is valid and can be opened
-- [ ] 404 endpoint returns proper error response
-
-## 📊 Container Management
-
-### View Running Containers
+### Build and Push
 
 ```bash
-docker ps
+# Tag the image
+docker tag playwright-mcp ghcr.io/harshityadav95/playwright-mcp:latest
+
+# Login to GitHub Container Registry
+echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+
+# Push the image
+docker push ghcr.io/harshityadav95/playwright-mcp:latest
 ```
 
-### View Container Logs
+### Pull and Run
 
 ```bash
-docker logs playwright-mcp-server
+# Pull from GitHub Packages
+docker pull ghcr.io/harshityadav95/playwright-mcp:latest
 
-# Follow logs in real-time
-docker logs -f playwright-mcp-server
+# Run the container
+docker run -d -p 8080:8080 --name playwright-mcp-server ghcr.io/harshityadav95/playwright-mcp:latest
 ```
 
-### Stop the Container
+## ☁️ Azure Deployment
+
+### Azure Container Instances
 
 ```bash
-docker stop playwright-mcp-server
+az container create \
+  --resource-group myResourceGroup \
+  --name playwright-mcp-server \
+  --image ghcr.io/harshityadav95/playwright-mcp:latest \
+  --dns-name-label playwright-mcp \
+  --ports 8080
 ```
 
-### Start the Container Again
+### Azure App Service
 
 ```bash
-docker start playwright-mcp-server
+az webapp create \
+  --resource-group myResourceGroup \
+  --plan myAppServicePlan \
+  --name playwright-mcp-app \
+  --deployment-container-image-name ghcr.io/harshityadav95/playwright-mcp:latest
 ```
 
-### Remove the Container
+## 🛠️ Development
+
+### Local Development (without Docker)
 
 ```bash
-docker rm playwright-mcp-server
+# Install dependencies
+npm install
+
+# Start the server
+npm start
 ```
 
-### Remove the Image
+The server will be available at http://localhost:8080
+
+### Run Tests
 
 ```bash
-docker rmi playwright-mcp
+npm test
 ```
-
-### Restart Everything
-
-```bash
-# Stop and remove existing container
-docker stop playwright-mcp-server && docker rm playwright-mcp-server
-
-# Rebuild image
-docker build -t playwright-mcp .
-
-# Run new container
-docker run -d -p 8080:8080 --name playwright-mcp-server playwright-mcp
-```
-
-## � Docker Commands Reference
-
-### Essential Docker Commands
-
-#### Image Management
-```bash
-# List all Docker images
-docker images
-
-# List images with specific name
-docker images playwright-mcp
-
-# Remove an image
-docker rmi playwright-mcp
-
-# Remove all unused images
-docker image prune
-
-# Remove all images (force)
-docker rmi $(docker images -q) -f
-
-# Build image with no cache
-docker build --no-cache -t playwright-mcp .
-
-# Tag an image
-docker tag playwright-mcp myregistry/playwright-mcp:v1.0
-```
-
-#### Container Management
-```bash
-# List running containers
-docker ps
-
-# List all containers (including stopped)
-docker ps -a
-
-# Start a container
-docker start playwright-mcp-server
-
-# Stop a container
-docker stop playwright-mcp-server
-
-# Restart a container
-docker restart playwright-mcp-server
-
-# Remove a container
-docker rm playwright-mcp-server
-
-# Force remove a running container
-docker rm -f playwright-mcp-server
-
-# Remove all stopped containers
-docker container prune
-```
-
-#### Container Inspection
-```bash
-# View container logs
-docker logs playwright-mcp-server
-
-# Follow logs in real-time
-docker logs -f playwright-mcp-server
-
-# View last 50 lines of logs
-docker logs --tail 50 playwright-mcp-server
-
-# Inspect container details
-docker inspect playwright-mcp-server
-
-# View container resource usage
-docker stats playwright-mcp-server
-
-# View container processes
-docker top playwright-mcp-server
-
-# Execute command in running container
-docker exec playwright-mcp-server ls -la /app
-
-# Open interactive shell in container
-docker exec -it playwright-mcp-server /bin/bash
-
-# Copy files from container to host
-docker cp playwright-mcp-server:/app/useragent.png ./local-screenshot.png
-
-# Copy files from host to container
-docker cp ./local-file.txt playwright-mcp-server:/app/
-```
-
-#### Network Management
-```bash
-# List Docker networks
-docker network ls
-
-# Inspect container network
-docker network inspect bridge
-
-# Create custom network
-docker network create playwright-network
-
-# Run container on specific network
-docker run -d --network playwright-network --name playwright-mcp-server playwright-mcp
-
-# Connect running container to network
-docker network connect playwright-network playwright-mcp-server
-
-# Disconnect from network
-docker network disconnect playwright-network playwright-mcp-server
-```
-
-#### Volume Management
-```bash
-# List volumes
-docker volume ls
-
-# Create a volume
-docker volume create playwright-data
-
-# Run container with volume
-docker run -d -p 8080:8080 -v playwright-data:/app/screenshots --name playwright-mcp-server playwright-mcp
-
-# Inspect volume
-docker volume inspect playwright-data
-
-# Remove volume
-docker volume rm playwright-data
-
-# Remove all unused volumes
-docker volume prune
-```
-
-#### System Management
-```bash
-# Show Docker disk usage
-docker system df
-
-# Remove all unused data (containers, networks, images, cache)
-docker system prune
-
-# Remove everything including volumes
-docker system prune -a --volumes
-
-# Show Docker version and info
-docker version
-docker info
-```
-
-#### Advanced Container Operations
-```bash
-# Run container with environment variables
-docker run -d -p 8080:8080 -e NODE_ENV=production --name playwright-mcp-server playwright-mcp
-
-# Run container with resource limits
-docker run -d -p 8080:8080 --memory="512m" --cpus="1.0" --name playwright-mcp-server playwright-mcp
-
-# Run container with restart policy
-docker run -d -p 8080:8080 --restart=always --name playwright-mcp-server playwright-mcp
-
-# Run container with custom hostname
-docker run -d -p 8080:8080 --hostname=playwright-server --name playwright-mcp-server playwright-mcp
-
-# Run container in foreground (see logs directly)
-docker run --rm -p 8080:8080 --name playwright-mcp-server playwright-mcp
-
-# Run container with port binding to specific interface
-docker run -d -p 127.0.0.1:8080:8080 --name playwright-mcp-server playwright-mcp
-```
-
-#### Docker Compose (Optional)
-If you want to use Docker Compose, create a `docker-compose.yml`:
-
-```yaml
-version: '3.8'
-services:
-  playwright-mcp:
-    build: .
-    container_name: playwright-mcp-server
-    ports:
-      - "8080:8080"
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-```
-
-Then use:
-```bash
-# Start services
-docker-compose up -d
-
-# Stop services
-docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# Rebuild and restart
-docker-compose up -d --build
-```
-
-#### Registry Operations
-```bash
-# Login to Docker Hub
-docker login
-
-# Tag image for registry
-docker tag playwright-mcp username/playwright-mcp:latest
-
-# Push image to Docker Hub
-docker push username/playwright-mcp:latest
-
-# Pull image from Docker Hub
-docker pull username/playwright-mcp:latest
-
-# Login to Azure Container Registry
-docker login myregistry.azurecr.io
-
-# Tag for ACR
-docker tag playwright-mcp myregistry.azurecr.io/playwright-mcp:v1.0
-
-# Push to ACR
-docker push myregistry.azurecr.io/playwright-mcp:v1.0
-```
-
-## �🛠️ Troubleshooting
-
-### Container Won't Start
-
-Check logs for errors:
-```bash
-docker logs playwright-mcp-server
-```
-
-### Port Already in Use
-
-If port 8080 is already in use, map to a different port:
-```bash
-docker run -d -p 8081:8080 --name playwright-mcp-server playwright-mcp
-```
-
-Then access at `http://localhost:8081/`
-
-### Server Returns 500 Error
-
-Check if Playwright version matches between `package.json` and `Dockerfile`:
-- `package.json`: `"playwright": "^1.56.1"`
-- `Dockerfile`: `FROM mcr.microsoft.com/playwright:v1.56.1-jammy`
-
-### Permission Denied
-
-On Linux, you may need to run Docker commands with `sudo` or add your user to the docker group:
-```bash
-sudo usermod -aG docker $USER
-```
-
-Then log out and back in.
 
 ## 🏗️ Project Structure
 
 ```
 .
-├── Dockerfile              # Docker image configuration
-├── index.js               # Node.js server with Playwright
-├── package.json           # Node.js dependencies
-├── package-lock.json      # Locked dependency versions
-├── test.js                # Comprehensive test suite
-└── README.md              # This file
+├── Dockerfile          # Docker image configuration
+├── index.js           # MCP server implementation
+├── package.json       # Dependencies
+├── test.js           # Test suite
+└── README.md         # This file
 ```
 
-## 🔧 API Endpoints
+## 📝 Environment Variables
 
-### `GET /`
-Returns a PNG screenshot of http://whatsmyuseragent.org/
+- `PORT` - Server port (default: 8080)
+- `HOST` - Server host (default: 0.0.0.0)
+- `NODE_ENV` - Node environment (default: production)
 
-**Response:**
-- Status: `200 OK`
-- Content-Type: `image/png`
-- Body: Binary PNG image data
+## 🔒 Security Notes
 
-### `GET /<anything-else>`
-Returns a 404 error for any other endpoint
+- The server runs with `--no-sandbox` flag for Docker compatibility
+- Consider using network policies to restrict access in production
+- Use HTTPS in production environments
 
-**Response:**
-- Status: `404 Not Found`
-- Content-Type: `text/plain`
-- Body: `Not Found`
+## 🤝 Contributing
 
-## 📝 Development
+Issues and pull requests are welcome!
 
-### Install Dependencies Locally
+## 📚 References
 
-```bash
-npm install
-```
-
-### Run Server Locally (without Docker)
-
-```bash
-node index.js
-```
-
-### Run Tests Against Local Server
-
-Make sure the server is running, then:
-```bash
-node test.js
-```
-
-## 🌐 Deployment to Azure
-
-This container is ready to be deployed to Azure Container Instances or Azure App Service. Make sure to:
-
-1. Push the image to Azure Container Registry (ACR)
-2. Configure appropriate port mappings
-3. Set up health probes on the root endpoint
+- [Microsoft Playwright MCP](https://github.com/microsoft/playwright-mcp)
+- [Model Context Protocol](https://modelcontextprotocol.io/)
+- [Playwright Documentation](https://playwright.dev)
 
 ## 📄 License
 
@@ -595,10 +323,6 @@ ISC
 **harshityadav95**
 - GitHub: [@harshityadav95](https://github.com/harshityadav95)
 
-## 🤝 Contributing
-
-Issues and pull requests are welcome!
-
 ---
 
-**Happy Testing! 🎭🐳**
+**Happy Automating! 🎭🐳**

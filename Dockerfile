@@ -5,8 +5,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies (disable strict SSL for corporate proxies)
+RUN npm config set strict-ssl false && npm install
 
 # Copy application code
 COPY index.js ./

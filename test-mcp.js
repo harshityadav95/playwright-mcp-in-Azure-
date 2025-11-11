@@ -206,14 +206,68 @@ async function runTests() {
     testsFailed++;
   }
 
-  // Test 6: Container logs
+  // Test 6: OpenAPI/Swagger endpoints
   try {
-    logInfo('Test 6: Checking container logs...');
+    logInfo('Test 6: Testing OpenAPI/Swagger endpoints...');
+    
+    // Test Swagger JSON endpoint
+    const swaggerJson = await httpGet(`http://localhost:${port}/api-docs.json`);
+    if (swaggerJson.status === 200 && 
+        swaggerJson.data.openapi &&
+        swaggerJson.data.info &&
+        swaggerJson.data.info.title === 'Playwright MCP Server API') {
+      logSuccess('OpenAPI JSON endpoint working correctly');
+      logInfo(`  → OpenAPI version: ${swaggerJson.data.openapi}`);
+      logInfo(`  → API version: ${swaggerJson.data.info.version}`);
+      
+      // Test Swagger UI HTML endpoint
+      const swaggerUiResponse = await httpGet(`http://localhost:${port}/api-docs`);
+      if (swaggerUiResponse.status === 200 && 
+          typeof swaggerUiResponse.data === 'string' &&
+          swaggerUiResponse.data.includes('swagger-ui-bundle')) {
+        logSuccess('Swagger UI HTML endpoint working correctly');
+        logInfo('  → Swagger UI uses CDN assets for standalone deployment');
+        testsPassed++;
+      } else {
+        throw new Error('Swagger UI HTML not rendered correctly');
+      }
+    } else {
+      throw new Error('Invalid OpenAPI JSON response');
+    }
+  } catch (error) {
+    logError(`OpenAPI/Swagger endpoint test failed: ${error.message}`);
+    testsFailed++;
+  }
+
+  // Test 7: Verify Swagger endpoints in health response
+  try {
+    logInfo('Test 7: Verifying Swagger endpoints in health response...');
+    const result = await httpGet(`http://localhost:${port}/health`);
+    
+    if (result.data.endpoints && 
+        result.data.endpoints.swagger === '/api-docs' &&
+        result.data.endpoints.openapi === '/api-docs.json') {
+      logSuccess('Swagger endpoints documented in health response');
+      logInfo('  → Swagger UI: /api-docs');
+      logInfo('  → OpenAPI JSON: /api-docs.json');
+      testsPassed++;
+    } else {
+      throw new Error('Swagger endpoints not found in health response');
+    }
+  } catch (error) {
+    logError(`Swagger endpoint documentation test failed: ${error.message}`);
+    testsFailed++;
+  }
+
+  // Test 8: Container logs
+  try {
+    logInfo('Test 8: Checking container logs...');
     const { stdout } = await execPromise(`docker logs ${containerName}`);
     
     if (stdout.includes('Playwright MCP Server started') && 
-        stdout.includes('Listening on')) {
-      logSuccess('Container logs show server started correctly');
+        stdout.includes('Listening on') &&
+        stdout.includes('api-docs')) {
+      logSuccess('Container logs show server started correctly with Swagger endpoint');
       testsPassed++;
     } else {
       throw new Error('Server startup message not found in logs');
@@ -244,6 +298,9 @@ async function runTests() {
     log('\nCurl commands to test:', colors.blue);
     log('  curl http://localhost:8080/health', colors.cyan);
     log('  curl http://localhost:8080/capabilities', colors.cyan);
+    log('  curl http://localhost:8080/api-docs.json', colors.cyan);
+    log('\nAccess Swagger UI in browser:', colors.blue);
+    log('  http://localhost:8080/api-docs', colors.cyan);
     process.exit(0);
   } else {
     log('✗ Some tests failed!', colors.red + colors.bold);

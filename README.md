@@ -369,7 +369,7 @@ az webapp create \
 ### Local Development (without Docker)
 
 ```bash
-# Install dependencies
+# Install dependencies (will automatically install Playwright browsers)
 npm install
 
 # Start the server
@@ -377,6 +377,12 @@ npm start
 ```
 
 The server will be available at http://localhost:8080
+
+**Note:** The `npm install` command automatically installs Playwright's Chromium browser via a postinstall script. If the installation fails, you can manually install it:
+
+```bash
+npx playwright install chromium
+```
 
 ### Run Tests
 
@@ -400,6 +406,50 @@ npm test
 - `PORT` - Server port (default: 8080)
 - `HOST` - Server host (default: 0.0.0.0)
 - `NODE_ENV` - Node environment (default: production)
+
+## 🔧 Troubleshooting
+
+### Browser Installation Issues
+
+If you encounter an error like:
+```
+Error: browserType.launchPersistentContext: Chromium distribution 'chrome' is not found
+```
+
+This means Playwright browsers are not installed. The project uses Playwright's bundled Chromium browser (not system Chrome). To fix:
+
+**Solution 1: Automatic (Recommended)**
+```bash
+npm install
+```
+The postinstall script will automatically install Chromium.
+
+**Solution 2: Manual Installation**
+```bash
+npx playwright install chromium
+```
+
+**Solution 3: Install with system dependencies**
+```bash
+npx playwright install chromium --with-deps
+```
+
+### Docker Issues
+
+If the Docker container fails to start, ensure:
+1. Port 8080 is available: `docker ps` to check for conflicts
+2. The image was built correctly: `docker build -t playwright-mcp .`
+3. Check logs: `docker logs playwright-mcp-server`
+
+The Docker image uses the official Playwright base image which includes all necessary browsers and dependencies.
+
+### Browser Choice
+
+This server uses **Chromium** (Playwright's bundled browser) instead of Chrome to ensure:
+- Cross-platform compatibility
+- No system dependencies
+- Consistent behavior in Docker and local environments
+- Automatic installation via npm
 
 ## 🔒 Security Notes
 

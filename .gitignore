@@ -1,0 +1,43 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Logs
+logs/
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
+# Test output
+*.png
+test-screenshot.png
+test-output.png
+
+# Environment files
+.env
+.env.*
+
+# VSCode
+.vscode/
+
+# Coverage
+coverage/
+
+# Misc
+*.swp
+*.swo
+.idea/
+
+# Ignore built files (if any)
+dist/
+build/

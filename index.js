@@ -17,8 +17,9 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const PORT = process.env.PORT || 8080;
 const HOST = process.env.HOST || '0.0.0.0';
 
-// Track active connections
+// Track active connections and transports by session ID
 const connections = new Set();
+const transports = {};
 
 // OpenAPI/Swagger configuration
 const swaggerOptions = {
@@ -198,12 +199,54 @@ const swaggerOptions = {
         }
       },
       '/mcp': {
+        get: {
+          tags: ['MCP'],
+          summary: 'Establish MCP SSE stream',
+          description: 'Establishes a Server-Sent Events (SSE) stream for Model Context Protocol communication. This endpoint should be called first to establish the connection. The response will include an endpoint event with a sessionId parameter that should be used for subsequent POST requests to /messages.',
+          responses: {
+            '200': {
+              description: 'SSE stream established successfully',
+              content: {
+                'text/event-stream': {
+                  schema: {
+                    type: 'string',
+                    example: 'event: endpoint\ndata: /messages?sessionId=abc-123\n\n'
+                  }
+                }
+              }
+            },
+            '500': {
+              description: 'Error establishing MCP connection',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/ErrorResponse'
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/messages': {
         post: {
           tags: ['MCP'],
-          summary: 'MCP protocol endpoint (SSE)',
-          description: 'Server-Sent Events (SSE) endpoint for Model Context Protocol communication. Connect MCP clients to this endpoint to access Playwright browser automation tools.',
+          summary: 'Send MCP messages',
+          description: 'Send JSON-RPC messages to the MCP server. Requires a valid sessionId query parameter obtained from the GET /mcp endpoint.',
+          parameters: [
+            {
+              in: 'query',
+              name: 'sessionId',
+              required: true,
+              schema: {
+                type: 'string'
+              },
+              description: 'Session ID obtained from the GET /mcp endpoint'
+            }
+          ],
           requestBody: {
-            description: 'MCP protocol messages',
+            description: 'MCP protocol JSON-RPC messages',
+            required: true,
             content: {
               'application/json': {
                 schema: {
@@ -224,24 +267,45 @@ const swaggerOptions = {
                       type: 'number',
                       example: 1
                     }
-                  }
+                  },
+                  required: ['jsonrpc', 'method']
                 }
               }
             }
           },
           responses: {
             '200': {
-              description: 'SSE stream established',
+              description: 'Message processed successfully',
               content: {
-                'text/event-stream': {
+                'application/json': {
                   schema: {
-                    type: 'string'
+                    type: 'object'
+                  }
+                }
+              }
+            },
+            '400': {
+              description: 'Missing or invalid sessionId',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/ErrorResponse'
+                  }
+                }
+              }
+            },
+            '404': {
+              description: 'Session not found',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/ErrorResponse'
                   }
                 }
               }
             },
             '500': {
-              description: 'Error establishing MCP connection',
+              description: 'Error processing message',
               content: {
                 'application/json': {
                   schema: {
@@ -348,7 +412,8 @@ const server = http.createServer(async (req, res) => {
       version: '1.0.0',
       port: PORT,
       endpoints: {
-        mcp: '/mcp',
+        mcp: '/mcp (GET for SSE stream)',
+        messages: '/messages (POST with sessionId)',
         health: '/health',
         capabilities: '/capabilities',
         swagger: '/api-docs',
@@ -408,9 +473,11 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // MCP endpoint
-  if (req.url === '/mcp' || req.url.startsWith('/mcp/')) {
+  // MCP endpoint - GET for establishing SSE stream
+  if (req.url === '/mcp' && req.method === 'GET') {
     try {
+      console.log('Received GET request to /mcp (establishing SSE stream)');
+      
       // Create MCP connection with Playwright
       const connection = await createConnection({
         browser: {
@@ -423,33 +490,91 @@ const server = http.createServer(async (req, res) => {
         }
       });
 
-      // Create SSE transport
-      const transport = new SSEServerTransport('/mcp', res);
+      // Create SSE transport - it will POST messages to /messages
+      const transport = new SSEServerTransport('/messages', res);
       
-      // Track connection
+      // Track connection and transport
       connections.add(connection);
+      const sessionId = transport.sessionId;
+      transports[sessionId] = transport;
+      
+      // Set up onclose handler to clean up transport when closed
+      transport.onclose = () => {
+        console.log(`SSE transport closed for session ${sessionId}`);
+        connections.delete(connection);
+        delete transports[sessionId];
+      };
       
       // Connect MCP server to transport
       await connection.connect(transport);
 
-      // Clean up on close
-      res.on('close', () => {
-        connections.delete(connection);
-        console.log('Client disconnected');
-      });
-
-      console.log('MCP client connected via SSE');
+      console.log(`Established SSE stream with session ID: ${sessionId}`);
     } catch (error) {
       console.error('Error handling MCP connection:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Failed to establish MCP connection', message: error.message }));
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to establish MCP connection', message: error.message }));
+      }
+    }
+    return;
+  }
+
+  // Messages endpoint - POST for receiving client JSON-RPC requests
+  if (req.url.startsWith('/messages') && req.method === 'POST') {
+    try {
+      console.log('Received POST request to /messages');
+      
+      // Extract session ID from URL query parameter
+      const parsedUrl = url.parse(req.url, true);
+      const sessionId = parsedUrl.query.sessionId;
+      
+      if (!sessionId) {
+        console.error('No session ID provided in request URL');
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Bad Request', message: 'Missing sessionId parameter' }));
+        return;
+      }
+      
+      const transport = transports[sessionId];
+      if (!transport) {
+        console.error(`No active transport found for session ID: ${sessionId}`);
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Not Found', message: 'Session not found' }));
+        return;
+      }
+      
+      // Read the request body
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk.toString();
+      });
+      
+      req.on('end', async () => {
+        try {
+          const parsedBody = JSON.parse(body);
+          // Handle the POST message with the transport
+          await transport.handlePostMessage(req, res, parsedBody);
+        } catch (error) {
+          console.error('Error handling request:', error);
+          if (!res.headersSent) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Internal Server Error', message: error.message }));
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error handling POST to /messages:', error);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Internal Server Error', message: error.message }));
+      }
     }
     return;
   }
 
   // 404 for other routes
   res.writeHead(404, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ error: 'Not Found', message: 'Available endpoints: /health, /capabilities, /mcp, /api-docs' }));
+  res.end(JSON.stringify({ error: 'Not Found', message: 'Available endpoints: /health, /capabilities, /mcp (GET), /messages (POST), /api-docs' }));
 });
 
 // Start server
@@ -459,7 +584,8 @@ server.listen(PORT, HOST, () => {
   console.log(`🔧 Available endpoints:`);
   console.log(`   - GET  /health       - Health check`);
   console.log(`   - GET  /capabilities - List MCP capabilities`);
-  console.log(`   - POST /mcp          - MCP protocol endpoint (SSE)`);
+  console.log(`   - GET  /mcp          - MCP SSE stream (establish connection)`);
+  console.log(`   - POST /messages     - MCP messages (with sessionId parameter)`);
   console.log(`   - GET  /api-docs     - OpenAPI/Swagger documentation`);
   console.log(`   - GET  /api-docs.json - OpenAPI specification (JSON)`);
   console.log(`\n✨ Server ready to accept connections!`);

@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "playwright-docker": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-p",
+        "8080:8080",
+        "playwright-mcp"
+      ],
+      "env": {
+        "PORT": "8080",
+        "HOST": "0.0.0.0"
+      }
+    },
+    "playwright-http": {
+      "url": "http://localhost:8080/mcp",
+      "transport": "sse"
+    }
+  }
+}

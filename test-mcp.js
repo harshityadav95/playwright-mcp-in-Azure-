@@ -190,16 +190,20 @@ async function runTests() {
   // Test 5: MCP endpoint availability (skip actual connection test)
   try {
     logInfo('Test 5: Verifying MCP endpoint is documented...');
-    // The MCP endpoint is at /mcp and requires a proper MCP client to test fully
+    // The MCP endpoint is at /mcp (GET) and /messages (POST) and requires a proper MCP client to test fully
     // We verify it's mentioned in the health response instead
     const result = await httpGet(`http://localhost:${port}/health`);
     
-    if (result.data.endpoints && result.data.endpoints.mcp === '/mcp') {
-      logSuccess('MCP endpoint is documented and available at /mcp');
+    if (result.data.endpoints && 
+        result.data.endpoints.mcp && 
+        result.data.endpoints.messages) {
+      logSuccess('MCP endpoint is documented and available');
+      logInfo('  → GET /mcp: SSE stream establishment');
+      logInfo('  → POST /messages: JSON-RPC message handling');
       logInfo('  → Note: MCP endpoint requires an MCP client to test fully');
       testsPassed++;
     } else {
-      throw new Error('MCP endpoint not found in health response');
+      throw new Error('MCP endpoints not found in health response');
     }
   } catch (error) {
     logError(`MCP endpoint test failed: ${error.message}`);

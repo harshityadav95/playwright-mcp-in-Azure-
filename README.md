@@ -50,7 +50,8 @@ You should see:
 🔧 Available endpoints:
    - GET  /health       - Health check
    - GET  /capabilities - List MCP capabilities
-   - POST /mcp          - MCP protocol endpoint (SSE)
+   - GET  /mcp          - MCP SSE stream (establish connection)
+   - POST /messages     - MCP messages (with sessionId parameter)
    - GET  /api-docs     - OpenAPI/Swagger documentation
    - GET  /api-docs.json - OpenAPI specification (JSON)
 
@@ -143,11 +144,38 @@ Response (excerpt):
 
 ### MCP Protocol Endpoint
 
-The main MCP endpoint is at `/mcp` and uses Server-Sent Events (SSE) transport:
+The MCP endpoint uses Server-Sent Events (SSE) transport with a two-step process:
 
+**Step 1: Establish SSE Stream (GET)**
 ```bash
-# Connect MCP client to the server
-POST http://localhost:8080/mcp
+# GET request to establish the SSE stream and receive sessionId
+curl http://localhost:8080/mcp
+```
+
+This returns an SSE stream with an endpoint event containing the sessionId:
+```
+event: endpoint
+data: /messages?sessionId=<session-id>
+```
+
+**Step 2: Send Messages (POST)**
+```bash
+# POST request to send JSON-RPC messages using the sessionId
+curl -X POST "http://localhost:8080/messages?sessionId=<session-id>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {
+        "name": "test-client",
+        "version": "1.0.0"
+      }
+    },
+    "id": 1
+  }'
 ```
 
 ## 🔌 Available MCP Tools

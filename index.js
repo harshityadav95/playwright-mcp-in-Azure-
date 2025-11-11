@@ -8,14 +8,283 @@
  */
 
 const http = require('http');
+const url = require('url');
 const { createConnection } = require('@playwright/mcp');
 const { SSEServerTransport } = require('@modelcontextprotocol/sdk/server/sse.js');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
 
 const PORT = process.env.PORT || 8080;
 const HOST = process.env.HOST || '0.0.0.0';
 
 // Track active connections
 const connections = new Set();
+
+// OpenAPI/Swagger configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Playwright MCP Server API',
+      version: '1.0.0',
+      description: 'A Model Context Protocol (MCP) server that provides browser automation capabilities using Playwright. This server exposes MCP tools via HTTP/SSE transport for integration with AI assistants and automation tools.',
+      contact: {
+        name: 'GitHub Repository',
+        url: 'https://github.com/harshityadav95/playwright-mcp-in-Azure-'
+      },
+      license: {
+        name: 'ISC',
+        url: 'https://opensource.org/licenses/ISC'
+      }
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+        description: 'Local development server'
+      },
+      {
+        url: `http://0.0.0.0:${PORT}`,
+        description: 'Docker container server'
+      }
+    ],
+    tags: [
+      {
+        name: 'Health',
+        description: 'Health check and status endpoints'
+      },
+      {
+        name: 'MCP',
+        description: 'Model Context Protocol endpoints'
+      },
+      {
+        name: 'Capabilities',
+        description: 'MCP tools and capabilities'
+      }
+    ],
+    components: {
+      schemas: {
+        HealthResponse: {
+          type: 'object',
+          properties: {
+            status: {
+              type: 'string',
+              example: 'ok'
+            },
+            service: {
+              type: 'string',
+              example: 'Playwright MCP Server'
+            },
+            version: {
+              type: 'string',
+              example: '1.0.0'
+            },
+            port: {
+              type: 'number',
+              example: 8080
+            },
+            endpoints: {
+              type: 'object',
+              properties: {
+                mcp: {
+                  type: 'string',
+                  example: '/mcp'
+                },
+                health: {
+                  type: 'string',
+                  example: '/health'
+                },
+                capabilities: {
+                  type: 'string',
+                  example: '/capabilities'
+                }
+              }
+            }
+          }
+        },
+        MCPTool: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              example: 'browser_navigate'
+            },
+            description: {
+              type: 'string',
+              example: 'Navigate to a URL'
+            }
+          }
+        },
+        CapabilitiesResponse: {
+          type: 'object',
+          properties: {
+            tools: {
+              type: 'array',
+              items: {
+                $ref: '#/components/schemas/MCPTool'
+              }
+            },
+            protocol: {
+              type: 'string',
+              example: 'MCP'
+            },
+            transport: {
+              type: 'string',
+              example: 'SSE'
+            }
+          }
+        },
+        ErrorResponse: {
+          type: 'object',
+          properties: {
+            error: {
+              type: 'string',
+              example: 'Not Found'
+            },
+            message: {
+              type: 'string',
+              example: 'Available endpoints: /health, /capabilities, /mcp'
+            }
+          }
+        }
+      }
+    },
+    paths: {
+      '/health': {
+        get: {
+          tags: ['Health'],
+          summary: 'Health check endpoint',
+          description: 'Returns the server status and available endpoints',
+          responses: {
+            '200': {
+              description: 'Server is healthy and running',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/HealthResponse'
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/capabilities': {
+        get: {
+          tags: ['Capabilities'],
+          summary: 'List MCP capabilities',
+          description: 'Returns all available Playwright MCP tools and their descriptions',
+          responses: {
+            '200': {
+              description: 'List of available MCP tools',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/CapabilitiesResponse'
+                  }
+                }
+              }
+            },
+            '500': {
+              description: 'Error retrieving capabilities',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/ErrorResponse'
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/mcp': {
+        post: {
+          tags: ['MCP'],
+          summary: 'MCP protocol endpoint (SSE)',
+          description: 'Server-Sent Events (SSE) endpoint for Model Context Protocol communication. Connect MCP clients to this endpoint to access Playwright browser automation tools.',
+          requestBody: {
+            description: 'MCP protocol messages',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    jsonrpc: {
+                      type: 'string',
+                      example: '2.0'
+                    },
+                    method: {
+                      type: 'string',
+                      example: 'tools/call'
+                    },
+                    params: {
+                      type: 'object'
+                    },
+                    id: {
+                      type: 'number',
+                      example: 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'SSE stream established',
+              content: {
+                'text/event-stream': {
+                  schema: {
+                    type: 'string'
+                  }
+                }
+              }
+            },
+            '500': {
+              description: 'Error establishing MCP connection',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/ErrorResponse'
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  apis: ['./index.js']
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+// Helper function to serve Swagger UI
+function serveSwaggerUI(req, res) {
+  const parsedUrl = url.parse(req.url, true);
+  const pathname = parsedUrl.pathname;
+
+  // Serve Swagger spec JSON
+  if (pathname === '/api-docs.json' || pathname === '/swagger.json') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(swaggerSpec, null, 2));
+    return true;
+  }
+
+  // Serve Swagger UI HTML
+  if (pathname === '/api-docs' || pathname === '/api-docs/') {
+    const swaggerHtml = swaggerUi.generateHTML(swaggerSpec, {
+      customSiteTitle: 'Playwright MCP API Documentation',
+      customCss: '.swagger-ui .topbar { display: none }',
+    });
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(swaggerHtml);
+    return true;
+  }
+
+  return false;
+}
 
 // Create HTTP server
 const server = http.createServer(async (req, res) => {
@@ -30,6 +299,11 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Swagger UI endpoints
+  if (serveSwaggerUI(req, res)) {
+    return;
+  }
+
   // Health check endpoint
   if (req.url === '/health' || req.url === '/') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -41,7 +315,9 @@ const server = http.createServer(async (req, res) => {
       endpoints: {
         mcp: '/mcp',
         health: '/health',
-        capabilities: '/capabilities'
+        capabilities: '/capabilities',
+        swagger: '/api-docs',
+        openapi: '/api-docs.json'
       }
     }));
     return;
@@ -134,7 +410,7 @@ const server = http.createServer(async (req, res) => {
 
   // 404 for other routes
   res.writeHead(404, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ error: 'Not Found', message: 'Available endpoints: /health, /capabilities, /mcp' }));
+  res.end(JSON.stringify({ error: 'Not Found', message: 'Available endpoints: /health, /capabilities, /mcp, /api-docs' }));
 });
 
 // Start server
@@ -145,6 +421,8 @@ server.listen(PORT, HOST, () => {
   console.log(`   - GET  /health       - Health check`);
   console.log(`   - GET  /capabilities - List MCP capabilities`);
   console.log(`   - POST /mcp          - MCP protocol endpoint (SSE)`);
+  console.log(`   - GET  /api-docs     - OpenAPI/Swagger documentation`);
+  console.log(`   - GET  /api-docs.json - OpenAPI specification (JSON)`);
   console.log(`\n✨ Server ready to accept connections!`);
 });
 

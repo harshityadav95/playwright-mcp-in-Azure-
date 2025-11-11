@@ -40,5 +40,5 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/harshityadav95/playwright-mcp:latest
-            ghcr.io/harshityadav95/playwright-mcp:${{ github.sha }}
+            ghcr.io/harshityadav95/playwright-mcp-in-Azure-/playwright-mcp:latest
+            ghcr.io/harshityadav95/playwright-mcp-in-Azure-/playwright-mcp:${{ github.sha }}

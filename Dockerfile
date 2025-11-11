@@ -8,4 +8,4 @@ WORKDIR /app
 EXPOSE 8080
 
 # The command to run the Playwright MCP server.
-CMD ["npx", "@playwright/mcp@latest", "--port", "8080"]
+CMD ["npx", "-y", "@playwright/mcp@latest", "--port", "8080"]

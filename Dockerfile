@@ -8,6 +8,10 @@ COPY package.json package-lock.json* ./
 # Install dependencies (disable strict SSL for corporate proxies)
 RUN npm config set strict-ssl false && npm install
 
+# Ensure Playwright browsers are installed (chromium is sufficient for this server)
+# The base image has browsers, but we explicitly install to ensure consistency
+RUN npx playwright install chromium --with-deps || true
+
 # Copy application code
 COPY index.js ./
 

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "test": "node test-mcp.js",
-    "test:old": "node test.js"
+    "test:old": "node test.js",
+    "postinstall": "npx playwright install chromium --with-deps || echo 'Warning: Failed to install Playwright browsers. Run: npx playwright install chromium'"
   },
   "repository": {
     "type": "git",

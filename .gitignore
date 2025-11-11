@@ -29,6 +29,7 @@ test-output.png
 
 # VSCode
 .vscode/
+!.vscode/mcp-settings.json
 
 # Coverage
 coverage/

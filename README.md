@@ -11,7 +11,9 @@ The [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open 
 - **Full Playwright MCP Support**: All browser automation tools from [@playwright/mcp](https://github.com/microsoft/playwright-mcp)
 - **Docker Ready**: Pre-built Docker image for easy deployment
 - **HTTP/SSE Transport**: Accessible via HTTP with Server-Sent Events
-- **Port 8080**: Standard port for easy integration
+- **OpenAPI/Swagger Documentation**: Interactive API documentation at `/api-docs`
+- **Port 8080**: Standard port for easy integration (binds to 0.0.0.0, accessible via localhost)
+- **VSCode Integration**: Ready-to-use MCP configuration for VSCode
 - **Azure Compatible**: Ready for Azure Container Instances, Azure App Service, and GitHub Packages
 
 ## 📋 Prerequisites
@@ -49,11 +51,31 @@ You should see:
    - GET  /health       - Health check
    - GET  /capabilities - List MCP capabilities
    - POST /mcp          - MCP protocol endpoint (SSE)
+   - GET  /api-docs     - OpenAPI/Swagger documentation
+   - GET  /api-docs.json - OpenAPI specification (JSON)
 
 ✨ Server ready to accept connections!
 ```
 
 ## 📡 API Endpoints
+
+### OpenAPI/Swagger Documentation
+
+Access the interactive API documentation:
+```bash
+# Open in browser
+http://localhost:8080/api-docs
+
+# Get OpenAPI spec JSON
+curl http://localhost:8080/api-docs.json
+```
+
+The Swagger UI provides:
+- Interactive API exploration
+- Request/response examples
+- Schema definitions
+- Tool descriptions
+- Try-it-out functionality
 
 ### Health Check
 ```bash
@@ -70,7 +92,9 @@ Response:
   "endpoints": {
     "mcp": "/mcp",
     "health": "/health",
-    "capabilities": "/capabilities"
+    "capabilities": "/capabilities",
+    "swagger": "/api-docs",
+    "openapi": "/api-docs.json"
   }
 }
 ```
@@ -176,19 +200,70 @@ For complete tool documentation, see the [official Playwright MCP documentation]
 
 ## 🌐 Using with MCP Clients
 
-### VS Code / Cursor
+### VS Code / Cursor / GitHub Copilot
 
-Add to your MCP settings:
+This server can be connected as an MCP server to VSCode, Cursor, or GitHub Copilot. A pre-configured `.vscode/mcp-settings.json` file is included in this repository.
 
+**Configuration Options:**
+
+#### Option 1: Connect to Running Docker Container (HTTP/SSE)
 ```json
 {
   "mcpServers": {
-    "playwright": {
-      "url": "http://localhost:8080/mcp"
+    "playwright-http": {
+      "url": "http://localhost:8080/mcp",
+      "transport": "sse"
     }
   }
 }
 ```
+
+#### Option 2: Auto-start Docker Container
+```json
+{
+  "mcpServers": {
+    "playwright-docker": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-p",
+        "8080:8080",
+        "playwright-mcp"
+      ],
+      "env": {
+        "PORT": "8080",
+        "HOST": "0.0.0.0"
+      }
+    }
+  }
+}
+```
+
+**Setup Steps:**
+
+1. **Build the Docker image** (if not already built):
+   ```bash
+   docker build -t playwright-mcp .
+   ```
+
+2. **Start the container**:
+   ```bash
+   docker run -d -p 8080:8080 --name playwright-mcp-server playwright-mcp
+   ```
+
+3. **Configure VSCode**:
+   - Copy `.vscode/mcp-settings.json` to your project or VSCode settings
+   - Or add the configuration to your VSCode settings JSON
+   - Reload VSCode/Cursor to activate the MCP connection
+
+4. **Verify Connection**:
+   - The MCP server should appear in your Copilot/AI assistant tools
+   - You should see Playwright browser automation tools available
+   - Test with a simple command like "Navigate to https://example.com"
+
+**Reference:** [Microsoft Playwright MCP Documentation](https://github.com/microsoft/playwright-mcp)
 
 ### Claude Desktop
 

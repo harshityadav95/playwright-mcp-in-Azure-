@@ -364,7 +364,10 @@ const server = http.createServer(async (req, res) => {
       // Create a temporary connection to get capabilities
       const connection = await createConnection({
         browser: {
-          launchOptions: { headless: true },
+          launchOptions: { 
+            headless: true,
+            channel: undefined  // Use bundled Chromium instead of Chrome
+          },
           browserName: 'chromium'
         }
       });
@@ -413,6 +416,7 @@ const server = http.createServer(async (req, res) => {
         browser: {
           launchOptions: { 
             headless: true,
+            channel: undefined,  // Use bundled Chromium instead of Chrome
             args: ['--no-sandbox', '--disable-setuid-sandbox']
           },
           browserName: 'chromium'

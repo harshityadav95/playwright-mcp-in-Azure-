@@ -8,6 +8,9 @@ COPY package.json package-lock.json* ./
 # Install dependencies (disable strict SSL for corporate proxies)
 RUN npm config set strict-ssl false && npm install
 
+# Ensure Playwright ships with Chrome for browser automation calls
+RUN npx playwright install chrome
+
 # Copy application code
 COPY index.js ./
 

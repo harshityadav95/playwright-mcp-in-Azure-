@@ -15,6 +15,7 @@ The [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open 
 - **Port 8080**: Standard port for easy integration (binds to 0.0.0.0, accessible via localhost)
 - **VSCode Integration**: Ready-to-use MCP configuration for VSCode
 - **Azure Compatible**: Ready for Azure Container Instances, Azure App Service, and GitHub Packages
+- **Preinstalled Chrome**: `npx playwright install chrome` runs during the Docker build so Chromium tools work on first request
 
 ## 📋 Prerequisites
 
@@ -57,6 +58,8 @@ You should see:
 
 ✨ Server ready to accept connections!
 ```
+
+Chrome is already installed inside the Docker image thanks to the Playwright install step, so MCP tools such as `browser_navigate` work immediately.
 
 ## 📡 API Endpoints
 

@@ -335,10 +335,10 @@ docker push ghcr.io/harshityadav95/playwright-mcp:latest
 
 ```bash
 # Pull from GitHub Packages
-docker pull ghcr.io/harshityadav95/playwright-mcp:latest
+ghcr.io/harshityadav95/playwright-mcp-in-azure:latest
 
 # Run the container
-docker run -d -p 8080:8080 --name playwright-mcp-server ghcr.io/harshityadav95/playwright-mcp:latest
+docker run -d -p 8080:8080 --name playwright-mcp-in-azure ghcr.io/harshityadav95/playwright-mcp-in-azure:latest
 ```
 
 ## ☁️ Azure Deployment

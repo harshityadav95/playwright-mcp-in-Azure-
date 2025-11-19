@@ -22,8 +22,11 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
 
       - name: Set up Docker Buildx
+        id: buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
@@ -42,6 +45,7 @@ jobs:
       - name: Build and push Docker image (multi-arch)
         uses: docker/build-push-action@v5
         with:
+          builder: ${{ steps.buildx.outputs.name }}
           context: .
           push: true
           platforms: linux/amd64,linux/arm64

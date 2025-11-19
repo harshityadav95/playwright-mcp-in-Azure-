@@ -337,11 +337,15 @@ docker push ghcr.io/harshityadav95/playwright-mcp:latest
 ### Pull and Run
 
 ```bash
-# Pull from GitHub Packages
-ghcr.io/harshityadav95/playwright-mcp-in-azure:latest
+# Pull the latest image
+docker pull ghcr.io/harshityadav95/playwright-mcp-in-azure:latest
 
-# Run the container
-docker run -d -p 8080:8080 --name playwright-mcp-in-azure ghcr.io/harshityadav95/playwright-mcp-in-azure:latest
+# Tag the pulled image locally as "playwright-mcp"
+docker tag ghcr.io/harshityadav95/playwright-mcp-in-azure:latest playwright-mcp
+
+# Run the container using the reference name
+docker run -d -p 8080:8080 --name playwright-mcp-server playwright-mcp
+
 ```
 
 ## ☁️ Azure Deployment

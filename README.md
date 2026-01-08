@@ -15,6 +15,7 @@ The [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open 
 - **Port 8080**: Standard port for easy integration (binds to 0.0.0.0, accessible via localhost)
 - **VSCode Integration**: Ready-to-use MCP configuration for VSCode
 - **Azure Compatible**: Ready for Azure Container Instances, Azure App Service, and GitHub Packages
+- **Preinstalled Chrome**: `npx playwright install chrome` runs during the Docker build so Chromium tools work on first request
 
 ## 📋 Prerequisites
 
@@ -57,6 +58,8 @@ You should see:
 
 ✨ Server ready to accept connections!
 ```
+
+Chrome is already installed inside the Docker image thanks to the Playwright install step, so MCP tools such as `browser_navigate` work immediately.
 
 ## 📡 API Endpoints
 
@@ -334,11 +337,15 @@ docker push ghcr.io/harshityadav95/playwright-mcp:latest
 ### Pull and Run
 
 ```bash
-# Pull from GitHub Packages
-docker pull ghcr.io/harshityadav95/playwright-mcp:latest
+# Pull the latest image
+docker pull ghcr.io/harshityadav95/playwright-mcp-in-azure:latest
 
-# Run the container
-docker run -d -p 8080:8080 --name playwright-mcp-server ghcr.io/harshityadav95/playwright-mcp:latest
+# Tag the pulled image locally as "playwright-mcp"
+docker tag ghcr.io/harshityadav95/playwright-mcp-in-azure:latest playwright-mcp
+
+# Run the container using the reference name
+docker run -d -p 8080:8080 --name playwright-mcp-server playwright-mcp
+
 ```
 
 ## ☁️ Azure Deployment
@@ -363,6 +370,107 @@ az webapp create \
   --name playwright-mcp-app \
   --deployment-container-image-name ghcr.io/harshityadav95/playwright-mcp:latest
 ```
+
+### Deploy to Azure Web App (step-by-step)
+
+This repo is packaged as a Docker container (recommended). Below are the common deployment paths for Azure Web Apps (Linux).
+
+1. Create a resource group (if you don't have one):
+
+```powershell
+az group create --name myResourceGroup --location "CentralUS"
+```
+
+2. Create an App Service plan (Linux):
+
+```powershell
+az appservice plan create --name myAppServicePlan --resource-group myResourceGroup --is-linux --sku B1
+```
+
+3. Create the Web App with a container image from a registry (example: GitHub Container Registry, ACR, or Docker Hub):
+
+Public image example (GHCR):
+
+```powershell
+az webapp create --resource-group myResourceGroup --plan myAppServicePlan --name playwright-mcp-app --deployment-container-image-name ghcr.io/harshityadav95/playwright-mcp:latest
+```
+
+If your image is private, configure the registry credentials:
+
+```powershell
+az webapp config container set --name playwright-mcp-app --resource-group myResourceGroup \
+  --docker-custom-image-name ghcr.io/harshityadav95/playwright-mcp:latest \
+  --docker-registry-server-url https://ghcr.io \
+  --docker-registry-server-user YOUR_GH_USERNAME \
+  --docker-registry-server-password YOUR_GHCR_PAT
+```
+
+4. Set the runtime port. If your container listens on port 8080, tell Azure which port to forward:
+
+```powershell
+az webapp config appsettings set --name playwright-mcp-app --resource-group myResourceGroup --settings WEBSITES_PORT=8080
+```
+
+5. Optional: Add environment variables used by the server (e.g., `PORT`, `HOST`):
+
+```powershell
+az webapp config appsettings set --name playwright-mcp-app --resource-group myResourceGroup --settings PORT=8080 HOST=0.0.0.0
+```
+
+6. Browse to the web app (or use `curl`) once provisioning finishes:
+
+```powershell
+az webapp browse --name playwright-mcp-app --resource-group myResourceGroup
+
+# or check health
+curl https://playwright-mcp-app.azurewebsites.net/health
+```
+
+### GitHub Actions: Automatic publish to Azure Web Apps (container)
+
+Use a GitHub Actions workflow to push images to GHCR/ACR and then update App Service. Create `.github/workflows/azure-deploy.yml` with this template:
+
+```yaml
+name: Build and deploy Docker image to Azure Web App
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GHCR_TOKEN }}
+
+    - name: Build and push Docker image
+      run: |
+        docker build -t ghcr.io/${{ github.repository_owner }}/playwright-mcp:${{ github.sha }} .
+        docker push ghcr.io/${{ github.repository_owner }}/playwright-mcp:${{ github.sha }}
+
+    - uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'playwright-mcp-app'
+        slot-name: 'production'
+        images: 'ghcr.io/${{ github.repository_owner }}/playwright-mcp:${{ github.sha }}'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+```
+
+Notes:
+- Create a GitHub secret `GHCR_TOKEN` and `AZURE_WEBAPP_PUBLISH_PROFILE` in the repository settings.
+- The `AZURE_WEBAPP_PUBLISH_PROFILE` can be downloaded from the Azure Portal under `Get publish profile` for your Web App.
+
+### App Service for Node (without Docker)
+
+If you prefer not to use containers, you can deploy this project directly as a Node app; however, the Docker container includes Playwright and its browser dependencies which are recommended for this server. For Node app deployment, configure runtime stack to Node and set `PORT` to `8080`.
 
 ## 🛠️ Development
 

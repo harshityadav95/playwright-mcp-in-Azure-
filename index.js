@@ -431,7 +431,9 @@ const server = http.createServer(async (req, res) => {
         browser: {
           launchOptions: { 
             headless: true,
-            channel: undefined  // Use bundled Chromium instead of Chrome
+            // Use bundled Chromium instead of Chrome to avoid installation issues
+            // Setting channel to undefined ensures we use Playwright's bundled browser
+            channel: undefined
           },
           browserName: 'chromium'
         }
@@ -483,7 +485,9 @@ const server = http.createServer(async (req, res) => {
         browser: {
           launchOptions: { 
             headless: true,
-            channel: undefined,  // Use bundled Chromium instead of Chrome
+            // Use bundled Chromium instead of Chrome to avoid installation issues
+            // Setting channel to undefined ensures we use Playwright's bundled browser
+            channel: undefined,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
           },
           browserName: 'chromium'
